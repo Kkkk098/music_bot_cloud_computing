@@ -1,12 +1,18 @@
 [Unit]
-Description=Music Genre API
-After=network.target
+Description=Music API
+After=network-online.target
+Wants=network-online.target
 
 [Service]
+Type=simple
 User=ubuntu
 WorkingDirectory=/opt/app
-ExecStart=/opt/app/.venv/bin/python api.py
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/opt/app/.venv/bin/python -u api.py
 Restart=always
+RestartSec=2
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=multi-user.target
