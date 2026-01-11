@@ -1,103 +1,104 @@
 ---
-- name: Deploy music bot
+- name: Deploy Music Classifier with Docker
   hosts: all
   become: yes
+  vars:
+    app_dir: /opt/app
+    telegram_token: "{{ telegram_token }}"
 
   tasks:
-    - name: Install dependencies
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install required packages
       apt:
         name:
-          - python3
+          - curl
+          - git
           - python3-pip
-          - python3-venv
-          - rsync
         state: present
-        update_cache: yes
+
+    - name: Check if Docker is installed
+      command: docker --version
+      register: docker_check
+      ignore_errors: yes
+      changed_when: false
+
+    - name: Install Docker
+      shell: |
+        curl -fsSL https://get.docker.com -o get-docker.sh
+        sh get-docker.sh
+        rm get-docker.sh
+      when: docker_check.rc != 0
+
+    - name: Install Docker Compose
+      get_url:
+        url: "https://github.com/docker/compose/releases/download/v2.24.0/docker-compose-Linux-x86_64"
+        dest: /usr/local/bin/docker-compose
+        mode: '0755'
+
+    - name: Start Docker service
+      service:
+        name: docker
+        state: started
+        enabled: yes
 
     - name: Create app directory
       file:
-        path: /opt/app
+        path: "{{ app_dir }}"
         state: directory
-        owner: ubuntu
-        group: ubuntu
         mode: '0755'
 
-    - name: Copy application files (repo root -> /opt/app)
+    - name: Copy application files
       synchronize:
-        src: .././
-        dest: /opt/app/
+        src: ../
+        dest: "{{ app_dir }}"
         delete: yes
         rsync_opts:
           - "--exclude=.git"
+          - "--exclude=__pycache__"
           - "--exclude=terraform"
           - "--exclude=ansible"
-          - "--exclude=.gradio"
-          - "--exclude=old_cache"
 
-    - name: Check app.sh exists
-      stat:
-        path: /opt/app/app.sh
-      register: appsh
-
-    - name: Fail if app.sh is missing
-      fail:
-        msg: "/opt/app/app.sh not found after copy. Check repo structure and synchronize src/dest."
-      when: not appsh.stat.exists
-
-    - name: Ensure app.sh is executable
-      file:
-        path: /opt/app/app.sh
-        mode: '0755'
-
-    - name: Run application setup script
-      shell: bash ./app.sh
-      args:
-        chdir: /opt/app
-        executable: /bin/bash
-      become_user: ubuntu
-
-    - name: Install music-api systemd unit
+    - name: Create .env file
       copy:
-        src: ../systemd/music-api.service
-        dest: /etc/systemd/system/music-api.service
-        owner: root
-        group: root
-        mode: '0644'
+        dest: "{{ app_dir }}/.env"
+        content: |
+          TELEGRAM_BOT_TOKEN={{ telegram_token }}
+        mode: '0600'
 
-    - name: Install music-bot systemd unit (template with token)
-      template:
-        src: music-bot.service.j2
-        dest: /etc/systemd/system/music-bot.service
-        owner: root
-        group: root
-        mode: '0644'
+    - name: Make scripts executable
+      file:
+        path: "{{ app_dir }}/{{ item }}"
+        mode: '0755'
+      loop:
+        - app.sh
+        - healthcheck.sh
 
-    - name: Reload systemd
-      systemd:
-        daemon_reload: yes
+    - name: Run deployment script
+      shell: bash {{ app_dir }}/app.sh
+      args:
+        chdir: "{{ app_dir }}"
+      register: deploy_output
 
-    - name: Enable and restart music-api
-      systemd:
-        name: music-api
-        enabled: yes
-        state: restarted
+    - name: Show deployment output
+      debug:
+        var: deploy_output.stdout_lines
 
-    - name: Enable and restart music-bot
-      systemd:
-        name: music-bot
-        enabled: yes
-        state: restarted
+    - name: Wait for API
+      uri:
+        url: "http://localhost:8000/health"
+        status_code: 200
+      register: result
+      until: result.status == 200
+      retries: 10
+      delay: 5
 
-    - name: Wait for services to start
-      pause:
-        seconds: 3
-
-    - name: Check music-api is active
-      shell: systemctl is-active --quiet music-api
-      register: api_active
-      changed_when: false
-
-    - name: Check music-bot is active
-      shell: systemctl is-active --quiet music-bot
-      register: bot_active
-      changed_when: false
+    - name: Add healthcheck to cron
+      cron:
+        name: "Docker healthcheck"
+        minute: "*/5"
+        job: "{{ app_dir }}/healthcheck.sh >> /var/log/healthcheck.log 2>&1"
+        user: root
