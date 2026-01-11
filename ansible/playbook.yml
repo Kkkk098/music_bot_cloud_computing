@@ -42,3 +42,33 @@
     - name: Run application script
       command: bash {{ app_dir }}/app.sh
       become_user: ubuntu
+    
+    - name: Show services status
+      shell: |
+        set -e
+        systemctl status music-api --no-pager || true
+        systemctl status music-bot --no-pager || true
+      register: svc_status
+      changed_when: false
+
+    - name: Print services status
+      debug:
+        var: svc_status.stdout_lines
+
+    - name: Show last logs (api)
+      shell: journalctl -u music-api -n 200 --no-pager || true
+      register: api_logs
+      changed_when: false
+
+    - name: Print api logs
+      debug:
+        var: api_logs.stdout_lines
+
+    - name: Show last logs (bot)
+      shell: journalctl -u music-bot -n 200 --no-pager || true
+      register: bot_logs
+      changed_when: false
+
+    - name: Print bot logs
+      debug:
+        var: bot_logs.stdout_lines
