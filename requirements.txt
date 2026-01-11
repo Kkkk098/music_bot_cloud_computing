@@ -1,6 +1,7 @@
 fastapi>=0.115,<0.116
 uvicorn>=0.30,<0.34
 python-multipart==0.0.20
+aiohttp==3.10.11
 numpy
 librosa
 soundfile
