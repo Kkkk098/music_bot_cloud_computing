@@ -1,8 +1,3 @@
-variable "image_name" {}
-variable "flavor_name" {}
-variable "network_name" {}
-variable "keypair" {}
-
 resource "openstack_compute_instance_v2" "music_server" {
   name            = "music-api-server"
   image_name      = var.image_name
