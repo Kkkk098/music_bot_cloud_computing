@@ -1,45 +1,19 @@
-services:
-  api:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: music-classifier:latest
-    container_name: music-api
-    restart: unless-stopped
-    ports:
-      - "8000:8000"
-    environment:
-      - PORT=8000
-      - PYTHONUNBUFFERED=1
-    networks:
-      - app-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+cat > Dockerfile <<'EOF'
+FROM python:3.10-slim
 
-  bot:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: music-classifier:latest
-    container_name: music-bot
-    restart: unless-stopped
-    command: ["python", "bot.py"]
-    environment:
-      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
-      - API_URL=http://api:8000
-      - PYTHONUNBUFFERED=1
-    env_file:
-      - .env
-    depends_on:
-      api:
-        condition: service_healthy
-    networks:
-      - app-network
+WORKDIR /app
 
-networks:
-  app-network:
-    driver: bridge
+RUN apt-get update && apt-get install -y \
+    curl \
+    ffmpeg \
+ && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+EXPOSE 8000
+
+CMD ["python", "api.py"]
+EOF
