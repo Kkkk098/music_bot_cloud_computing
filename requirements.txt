@@ -8,8 +8,8 @@ python-telegram-bot>=21.0,<22
 aiohttp==3.10.11
 
 # ML/Audio
-torch==2.5.1
-torchaudio==2.5.1
+torch==2.4.1
+torchaudio==2.4.1
 librosa==0.10.2.post1
 soundfile==0.12.1
 numpy==1.26.4
