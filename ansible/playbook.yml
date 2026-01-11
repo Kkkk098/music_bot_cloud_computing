@@ -72,8 +72,22 @@
     - name: Print bot logs
       debug:
         var: bot_logs.stdout_lines
+        
     - name: Install systemd unit
       template:
-      src: music-bot.service.j2
-      dest: /etc/systemd/system/music-bot.service
+        src: music-bot.service.j2
+        dest: /etc/systemd/system/music-bot.service
+        owner: root
+        group: root
+        mode: '0644'
+      vars:
+        # Эта строка заставит Ansible взять токен из Jenkins
+        telegram_token: "{{ lookup('env', 'TELEGRAM_TOKEN') }}"
+
+    - name: Reload systemd and restart bot
+      systemd:
+        name: music-bot
+        state: restarted
+        daemon_reload: yes
+        enabled: yes
 
