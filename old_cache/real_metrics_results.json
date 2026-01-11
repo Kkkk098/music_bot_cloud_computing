@@ -1,0 +1,42 @@
+{
+  "precision_metrics": {
+    "full": {
+      "Precision@1": 0.015,
+      "Precision@5": 0.07,
+      "Precision@10": 0.145
+    },
+    "face": {
+      "Precision@1": 0.015,
+      "Precision@5": 0.09,
+      "Precision@10": 0.2
+    },
+    "face_no_hair": {
+      "Precision@1": 0.02,
+      "Precision@5": 0.09,
+      "Precision@10": 0.18
+    },
+    "corner": {
+      "Precision@1": 0.015,
+      "Precision@5": 0.04,
+      "Precision@10": 0.1
+    }
+  },
+  "robustness_metrics": {
+    "full": {
+      "avg_similarity": 0.6293813178512575,
+      "std_similarity": 0.0675534931611651
+    },
+    "face": {
+      "avg_similarity": 0.547100967738708,
+      "std_similarity": 0.09246179679090634
+    },
+    "face_no_hair": {
+      "avg_similarity": 0.5988453351881532,
+      "std_similarity": 0.10793546981976011
+    },
+    "corner": {
+      "avg_similarity": 1.0000000000000004,
+      "std_similarity": 5.020614614978942e-16
+    }
+  }
+}
