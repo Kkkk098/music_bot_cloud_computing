@@ -42,16 +42,20 @@
         systemctl enable docker || true
       changed_when: false
 
-    - name: Verify Docker is running (explicit path)
+    - name: Verify Docker is running (any path)
       shell: |
-        if [ -x /usr/bin/docker ]; then
-          /usr/bin/docker info
-        elif [ -x /snap/bin/docker ]; then
-          /snap/bin/docker info
-        else
-          echo "Docker binary not found"
+        set -e
+        DOCKER_BIN="$(command -v docker || true)"
+
+        if [ -z "$DOCKER_BIN" ]; then
+          echo "Docker binary not found in PATH"
+          echo "PATH=$PATH"
+          ls -l /usr/bin /usr/local/bin || true
           exit 1
         fi
+
+        echo "Using docker at $DOCKER_BIN"
+        "$DOCKER_BIN" info
       changed_when: false
 
     - name: Install Docker Compose
@@ -98,3 +102,4 @@
       shell: bash {{ app_dir }}/app.sh
       args:
         chdir: "{{ app_dir }}"
+
