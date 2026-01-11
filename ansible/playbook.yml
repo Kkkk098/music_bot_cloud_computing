@@ -92,6 +92,23 @@
         - app.sh
         - healthcheck.sh
 
+    - name: Debug: list app dir and show first lines of Dockerfile and docker-compose.yml
+      shell: |
+        set -e
+        ls -la {{ remote_app_dir }}
+        echo "----- Dockerfile (head) -----"
+        sed -n '1,30p' {{ remote_app_dir }}/Dockerfile || true
+        echo "----- docker-compose.yml (head) -----"
+        sed -n '1,30p' {{ remote_app_dir }}/docker-compose.yml || true
+      args:
+        executable: /bin/bash
+      register: dbg
+      changed_when: false
+
+    - name: Show debug output
+      debug:
+        var: dbg.stdout_lines
+        
     - name: Run deployment script
       shell: bash ./app.sh
       args:
@@ -101,3 +118,4 @@
     - name: Show deploy output
       debug:
         var: deploy_out.stdout_lines
+
