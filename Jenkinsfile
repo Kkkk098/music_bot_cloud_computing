@@ -3,18 +3,11 @@ pipeline {
 
     environment {
         OS_CLOUD = 'mycloud'
-        // Ссылка на твои веса из GitHub Releases
         WEIGHTS_URL = 'https://github.com/1vmc1/MT/releases/download/1.0/music_genre_model.pth'
     }
 
     stages {
-        stage('Checkout') {
-            steps {
-                git branch: 'main', url: 'https://github.com/1vmc1/MT.git'
-            }
-        }
 
-        /* ===== TERRAFORM: Создаем 1 сервер ===== */
         stage('Terraform Apply') {
             steps {
                 dir('terraform') {
@@ -33,29 +26,22 @@ pipeline {
             }
         }
 
-        /* ===== WAIT FOR SSH ===== */
         stage('Wait for SSH') {
             steps {
                 dir('ansible') {
                     sh '''
                         set -e
                         VM_IP=$(cat ip.txt)
-                        echo "Waiting for SSH on ${VM_IP}..."
                         for i in {1..30}; do
-                          if nc -z ${VM_IP} 22; then
-                            echo "SSH is ready"
-                            exit 0
-                          fi
+                          if nc -z ${VM_IP} 22; then exit 0; fi
                           sleep 5
                         done
-                        echo "SSH is not available"
                         exit 1
                     '''
                 }
             }
         }
 
-        /* ===== ANSIBLE DEPLOY ===== */
         stage('Deploy (Ansible)') {
             steps {
                 dir('ansible') {
@@ -73,15 +59,6 @@ pipeline {
                           playbook.yml
                     '''
                 }
-            }
-        }
-    }
-
-    post {
-        success {
-            script {
-                def ip = readFile('ansible/ip.txt').trim()
-                echo "✅ Успех! API доступно по адресу: http://${ip}:8000"
             }
         }
     }
