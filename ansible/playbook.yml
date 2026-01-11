@@ -21,14 +21,19 @@
         group: ubuntu
         mode: '0755'
 
-    - name: Copy application files
+   - name: Copy application files
       synchronize:
-        src: ../app/
+        # Мы берем всё из корня репозитория (на один уровень выше папки ansible)
+        src: ../
         dest: /opt/app/
         delete: yes
         rsync_opts:
+          # Исключаем служебные папки, чтобы не копировать лишнее на сервер
           - "--exclude=.git"
-          - "--exclude=__pycache__"
+          - "--exclude=terraform"
+          - "--exclude=ansible"
+          - "--exclude=.gradio"
+          - "--exclude=old_cache"
 
     - name: Run application setup script
       shell: /opt/app/app.sh
@@ -86,3 +91,4 @@
         state: started
       register: bot_status
       failed_when: bot_status.status.ActiveState != 'active'
+
