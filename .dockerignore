@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+.Python
+venv/
+.git/
+.gitignore
+.vscode/
+.idea/
+*.log
+ansible/
+terraform/
+.env
+*.pem
+*.key
+.DS_Store
