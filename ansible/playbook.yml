@@ -72,3 +72,8 @@
     - name: Print bot logs
       debug:
         var: bot_logs.stdout_lines
+    - name: Install systemd unit
+      template:
+      src: music-bot.service.j2
+      dest: /etc/systemd/system/music-bot.service
+
