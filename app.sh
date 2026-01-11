@@ -15,6 +15,19 @@ if [[ ! -f .env ]]; then
     exit 1
 fi
 
+# ✅ ЗАЩИТА: проверяем, что Dockerfile — реально Dockerfile
+if [[ ! -f Dockerfile ]]; then
+    echo -e "${RED}[ERROR] Dockerfile not found!${NC}"
+    exit 1
+fi
+
+head -1 Dockerfile | grep -q '^FROM' || {
+    echo -e "${RED}[ERROR] Dockerfile is invalid (does not start with FROM)${NC}"
+    echo -e "${YELLOW}First line of Dockerfile:${NC}"
+    head -1 Dockerfile
+    exit 1
+}
+
 # Остановка старых контейнеров
 echo -e "${YELLOW}[app.sh] Stopping old containers...${NC}"
 docker compose down --remove-orphans 2>/dev/null || true
