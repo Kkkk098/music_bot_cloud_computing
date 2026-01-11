@@ -1,44 +1,47 @@
-# ============ Stage 1: Builder ============
-FROM python:3.10-slim AS builder
+version: "3.9"
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    gcc \
-    g++ \
-    libsndfile1-dev \
-    ffmpeg \
-    && rm -rf /var/lib/apt/lists/*
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: music-classifier:latest
+    container_name: music-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - PYTHONUNBUFFERED=1
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
-WORKDIR /build
-COPY requirements.txt .
-RUN python -m venv /opt/venv && \
-    /opt/venv/bin/pip install --no-cache-dir --upgrade pip setuptools wheel && \
-    /opt/venv/bin/pip install --no-cache-dir -r requirements.txt
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: music-classifier:latest
+    container_name: music-bot
+    restart: unless-stopped
+    command: ["python", "bot.py"]
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - API_URL=http://api:8000
+      - PYTHONUNBUFFERED=1
+    env_file:
+      - .env
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - app-network
 
-# ============ Stage 2: Runtime ============
-FROM python:3.10-slim
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ffmpeg \
-    libsndfile1 \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
-
-COPY --from=builder /opt/venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
-
-WORKDIR /app
-
-COPY api.py model_utils.py server.py bot.py labels.json ./
-COPY best_model_heavy_m192_h256_gru256x2.pth ./
-
-RUN useradd -m -u 1000 appuser && \
-    chown -R appuser:appuser /app
-USER appuser
-
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
-
-EXPOSE 8000
-
-CMD ["python", "api.py"]
+networks:
+  app-network:
+    driver: bridge
