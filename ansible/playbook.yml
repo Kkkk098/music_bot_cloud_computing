@@ -77,7 +77,13 @@
           - "--exclude=.git"
           - "--exclude=ansible"
           - "--exclude=terraform"
-
+          
+    - name: Ensure Dockerfile is copied correctly
+      copy:
+        src: "{{ local_project_root }}/Dockerfile"
+        dest: "{{ remote_app_dir }}/Dockerfile"
+        mode: "0644"
+        
     - name: Create .env file
       copy:
         dest: "{{ remote_app_dir }}/.env"
@@ -117,5 +123,6 @@
     - name: Show deploy output
       debug:
         var: deploy_out.stdout_lines
+
 
 
