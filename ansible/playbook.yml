@@ -1,93 +1,88 @@
 ---
-- name: Deploy application to VM
-  hosts: servers
+- name: Deploy music bot
+  hosts: all
   become: yes
 
-  vars:
-    app_dir: /opt/app
-
   tasks:
-    - name: Install required packages
+    - name: Install dependencies
       apt:
         name:
           - python3
           - python3-pip
           - python3-venv
-        update_cache: yes
         state: present
+        update_cache: yes
 
-    - name: Create application directory
+    - name: Create app directory
       file:
-        path: "{{ app_dir }}"
+        path: /opt/app
         state: directory
         owner: ubuntu
         group: ubuntu
         mode: '0755'
 
     - name: Copy application files
+      synchronize:
+        src: ../app/
+        dest: /opt/app/
+        delete: yes
+        rsync_opts:
+          - "--exclude=.git"
+          - "--exclude=__pycache__"
+
+    - name: Run application setup script
+      shell: /opt/app/app.sh
+      args:
+        executable: /bin/bash
+      become_user: ubuntu
+
+    # ✅ SYSTEMD ТОЛЬКО ЗДЕСЬ (ПОСЛЕ app.sh)
+    - name: Install music-api systemd unit
       copy:
-        src: "{{ playbook_dir }}/../"
-        dest: "{{ app_dir }}/"
-        owner: ubuntu
-        group: ubuntu
-        mode: '0755'
-        remote_src: no
-      become_user: ubuntu
+        src: ../app/systemd/music-api.service
+        dest: /etc/systemd/system/music-api.service
+        owner: root
+        group: root
+        mode: '0644'
 
-    - name: Make app.sh executable
-      file:
-        path: "{{ app_dir }}/app.sh"
-        mode: '0755'
-
-    - name: Run application script
-      command: bash {{ app_dir }}/app.sh
-      become_user: ubuntu
-    
-    - name: Show services status
-      shell: |
-        set -e
-        systemctl status music-api --no-pager || true
-        systemctl status music-bot --no-pager || true
-      register: svc_status
-      changed_when: false
-
-    - name: Print services status
-      debug:
-        var: svc_status.stdout_lines
-
-    - name: Show last logs (api)
-      shell: journalctl -u music-api -n 200 --no-pager || true
-      register: api_logs
-      changed_when: false
-
-    - name: Print api logs
-      debug:
-        var: api_logs.stdout_lines
-
-    - name: Show last logs (bot)
-      shell: journalctl -u music-bot -n 200 --no-pager || true
-      register: bot_logs
-      changed_when: false
-
-    - name: Print bot logs
-      debug:
-        var: bot_logs.stdout_lines
-        
-    - name: Install systemd unit
+    - name: Install music-bot systemd unit
       template:
         src: music-bot.service.j2
         dest: /etc/systemd/system/music-bot.service
         owner: root
         group: root
         mode: '0644'
-      vars:
-        # Эта строка заставит Ansible взять токен из Jenkins
-        telegram_token: "{{ lookup('env', 'TELEGRAM_TOKEN') }}"
 
-    - name: Reload systemd and restart bot
+    - name: Reload systemd
+      systemd:
+        daemon_reload: yes
+
+    - name: Enable and restart music-api
+      systemd:
+        name: music-api
+        enabled: yes
+        state: restarted
+
+    - name: Enable and restart music-bot
       systemd:
         name: music-bot
-        state: restarted
-        daemon_reload: yes
         enabled: yes
+        state: restarted
 
+    - name: Wait for services to start
+      pause:
+        seconds: 3
+
+    - name: Check music-api status
+      systemd:
+        name: music-api
+        state: started
+      register: api_status
+      failed_when: api_status.status.ActiveState != 'active'
+
+    - name: Check music-bot status
+      systemd:
+        name: music-bot
+        state: started
+      register: bot_status
+      failed_when: bot_status.status.ActiveState != 'active'
