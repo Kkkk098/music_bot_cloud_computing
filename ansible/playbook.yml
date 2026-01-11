@@ -1,0 +1,44 @@
+---
+- name: Deploy application to VM
+  hosts: servers
+  become: yes
+
+  vars:
+    app_dir: /opt/app
+
+  tasks:
+    - name: Install required packages
+      apt:
+        name:
+          - python3
+          - python3-pip
+          - python3-venv
+        update_cache: yes
+        state: present
+
+    - name: Create application directory
+      file:
+        path: "{{ app_dir }}"
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: '0755'
+
+    - name: Copy application files
+      copy:
+        src: "{{ playbook_dir }}/../"
+        dest: "{{ app_dir }}/"
+        owner: ubuntu
+        group: ubuntu
+        mode: '0755'
+        remote_src: no
+      become_user: ubuntu
+
+    - name: Make app.sh executable
+      file:
+        path: "{{ app_dir }}/app.sh"
+        mode: '0755'
+
+    - name: Run application script
+      command: bash {{ app_dir }}/app.sh
+      become_user: ubuntu
