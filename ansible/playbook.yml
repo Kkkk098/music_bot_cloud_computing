@@ -22,6 +22,11 @@
         path: "{{ model_dest }}"
         state: absent
 
+    - name: Remove any existing path at labels.json (file or directory)
+      file:
+        path: "{{ app_dir }}/labels.json"
+        state: absent
+
     - name: Ensure parent directory exists (just in case)
       file:
         path: "{{ app_dir }}"
@@ -67,8 +72,18 @@
       register: download_result
       failed_when: download_result.status is defined and download_result.status not in [200,201,204]
 
+    - name: Stat model file
+      stat:
+        path: "{{ model_dest }}"
+      register: model_stat
+
+    - name: Fail if model file is empty or missing
+      fail:
+        msg: "Model file {{ model_dest }} is missing or zero-sized after download (status={{ download_result.status }})."
+      when: model_stat.stat.exists == false or model_stat.stat.size | default(0) == 0
+
     - name: Show model file info (debug)
-      command: ls -l "{{ model_dest }}"
+      command: ls -lh "{{ model_dest }}"
       register: model_ls
       changed_when: false
 
