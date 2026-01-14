@@ -2,36 +2,46 @@
 - name: Deploy Music App with Docker Compose
   hosts: servers
   become: yes
+  vars:
+    model_filename: best_model_heavy_m192_h256_gru256x2.pth
+    model_dest: /opt/music-app/best_model_heavy_m192_h256_gru256x2.pth
+    release_url: "https://github.com/1vmc1/MT/releases/download/1.0/{{ model_filename }}"
   tasks:
+
     - name: Ensure remote app directory exists
       file:
         path: /opt/music-app
         state: directory
         mode: '0755'
 
-    - name: Remove accidental directory created by docker
+    - name: Remove accidental directory created by docker (if any)
       file:
-        path: /opt/music-app/best_model_heavy_m192_h256_gru256x2.pth
+        path: "{{ model_dest }}"
         state: absent
 
-    - name: Copy docker-compose.yml from root
+    - name: Copy docker-compose.yml from repo root
       copy:
         src: ../docker-compose.yml
         dest: /opt/music-app/docker-compose.yml
         mode: '0644'
 
-    - name: Copy labels.json from root
+    - name: Copy labels.json from repo root
       copy:
         src: ../labels.json
         dest: /opt/music-app/labels.json
         mode: '0644'
 
-    - name: Download model file from GitHub Releases
+    - name: Download model file from GitHub Releases (uses github_token if provided)
       get_url:
-        url: "https://github.com/1vmc1/MT/releases/download/1.0/best_model_heavy_m192_h256_gru256x2.pth"
-        dest: /opt/music-app/best_model_heavy_m192_h256_gru256x2.pth
+        url: "{{ release_url }}"
+        dest: "{{ model_dest }}"
         mode: '0644'
         timeout: 300
+        headers:
+          Authorization: "token {{ github_token }}"
+      register: download_result
+      failed_when: download_result.status is defined and download_result.status not in [200, 201, 204]
+      # Note: if repo is public, GitHub ignores Authorization header; if private, github_token must be valid
 
     - name: Create .env file with Telegram token
       copy:
