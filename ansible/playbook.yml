@@ -158,9 +158,11 @@
       register: compose_up
 
     - name: Show docker ps output (debug)
-      shell: sudo docker ps --format "ID: {{ '{{' }}.ID{{ '}}' }} | Image: {{ '{{' }}.Image{{ '}}' }} | Status: {{ '{{' }}.Status{{ '}}' }}"
+      shell: |
+      sudo docker ps --format 'ID: {{`{{.ID}}`}} | Image: {{`{{.Image}}`}} | Status: {{`{{.Status}}`}}'
       register: docker_ps
       changed_when: false
 
     - debug:
-        msg: "{{ docker_ps.stdout_lines }}"
+      msg: "{{ docker_ps.stdout_lines }}"
+
