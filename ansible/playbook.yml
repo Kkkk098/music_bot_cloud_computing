@@ -1,9 +1,11 @@
 - name: Deploy Music App with Docker Compose
   hosts: all
   become: yes
+
   vars:
-    # playbook_dir — встроенная переменная Ansible: путь к директории, где лежит playbook
-    local_project_root: "{{ playbook_dir }}"
+    # playbook_dir — директория, где лежит этот playbook (ansible/)
+    # ../ от playbook_dir -> корень репозитория, где лежит docker-compose.yml
+    local_project_root: "{{ playbook_dir }}/.."
     remote_app_dir: /opt/music-app
 
   tasks:
