@@ -6,56 +6,91 @@
     model_filename: best_model_heavy_m192_h256_gru256x2.pth
     model_dest: /opt/music-app/best_model_heavy_m192_h256_gru256x2.pth
     release_url: "https://github.com/1vmc1/MT/releases/download/1.0/{{ model_filename }}"
-  tasks:
+    app_dir: /opt/music-app
 
+  tasks:
     - name: Ensure remote app directory exists
       file:
-        path: /opt/music-app
+        path: "{{ app_dir }}"
         state: directory
         mode: '0755'
+        owner: ubuntu
+        group: ubuntu
 
-    - name: Remove accidental directory created by docker (if any)
+    - name: Remove any existing path at model location (file or directory)
       file:
         path: "{{ model_dest }}"
         state: absent
 
+    - name: Ensure parent directory exists (just in case)
+      file:
+        path: "{{ app_dir }}"
+        state: directory
+        mode: '0755'
+        owner: ubuntu
+        group: ubuntu
+
+    - name: Create empty placeholder file for model (guarantee file type)
+      copy:
+        content: ""
+        dest: "{{ model_dest }}"
+        owner: ubuntu
+        group: ubuntu
+        mode: '0644'
+
     - name: Copy docker-compose.yml from repo root
       copy:
         src: ../docker-compose.yml
-        dest: /opt/music-app/docker-compose.yml
+        dest: "{{ app_dir }}/docker-compose.yml"
         mode: '0644'
+        owner: ubuntu
+        group: ubuntu
 
     - name: Copy labels.json from repo root
       copy:
         src: ../labels.json
-        dest: /opt/music-app/labels.json
+        dest: "{{ app_dir }}/labels.json"
         mode: '0644'
+        owner: ubuntu
+        group: ubuntu
 
     - name: Download model file from GitHub Releases (uses github_token if provided)
       get_url:
         url: "{{ release_url }}"
         dest: "{{ model_dest }}"
         mode: '0644'
+        owner: ubuntu
+        group: ubuntu
         timeout: 300
         headers:
           Authorization: "token {{ github_token }}"
       register: download_result
-      failed_when: download_result.status is defined and download_result.status not in [200, 201, 204]
-      # Note: if repo is public, GitHub ignores Authorization header; if private, github_token must be valid
+      failed_when: download_result.status is defined and download_result.status not in [200,201,204]
+
+    - name: Show model file info (debug)
+      command: ls -l "{{ model_dest }}"
+      register: model_ls
+      changed_when: false
+
+    - name: Print model ls output
+      debug:
+        var: model_ls.stdout_lines
 
     - name: Create .env file with Telegram token
       copy:
-        dest: /opt/music-app/.env
+        dest: "{{ app_dir }}/.env"
         content: |
           TELEGRAM_TOKEN={{ telegram_token }}
         mode: '0600'
+        owner: ubuntu
+        group: ubuntu
 
     - name: Pull latest images
       shell: docker-compose pull
       args:
-        chdir: /opt/music-app
+        chdir: "{{ app_dir }}"
 
     - name: Start containers
       shell: docker-compose up -d
       args:
-        chdir: /opt/music-app
+        chdir: "{{ app_dir }}"
