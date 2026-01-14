@@ -3,10 +3,9 @@ pipeline {
 
     environment {
         OS_CLOUD = 'mycloud'
+        // TELEGRAM_TOKEN — должен быть сохранён в Jenkins (Secret text)
         TELEGRAM_TOKEN = credentials('TELEGRAM_TOKEN')
-        // Подставил ваш ID из логов
-        GITHUB_TOKEN = credentials('dd6f415a-55dd-4c4b-9083-6452b71cafe6')
-        DOCKER_HUB_CRED = 'docker-hub-cred'
+        // (не передаём GITHUB_TOKEN в environment — будем извлекать в withCredentials)
     }
 
     stages {
@@ -75,7 +74,8 @@ EOF
         stage('Docker Login') {
             steps {
                 dir('ansible') {
-                    withCredentials([usernamePassword(credentialsId: env.DOCKER_HUB_CRED, usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    // Замените 'docker-hub-cred' на ваш credentialsId (username/password)
+                    withCredentials([usernamePassword(credentialsId: 'docker-hub-cred', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
                         sh '''
                             set -e
                             VM_IP=$(cat ip.txt)
@@ -89,17 +89,22 @@ EOF
         stage('Deploy with Ansible') {
             steps {
                 dir('ansible') {
-                    sh '''
-                        set -e
-                        VM_IP=$(cat ip.txt)
-                        echo "[servers]" > inventory.ini
-                        echo "vm ansible_host=${VM_IP} ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/jenkins_deploy_rsa" >> inventory.ini
-                        ansible-playbook -i inventory.ini \
-                          --ssh-common-args='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null' \
-                          -e "telegram_token=${TELEGRAM_TOKEN}" \
-                          -e "github_token=${GITHUB_TOKEN}" \
-                          playbook.yml
-                    '''
+                    // Используем withCredentials для GitHub PAT (secret text). 
+                    // Замените ID 'dd6f415a-55dd-4c4b-9083-6452b71cafe6' если нужно.
+                    withCredentials([string(credentialsId: 'dd6f415a-55dd-4c4b-9083-6452b71cafe6', variable: 'G_TOKEN')]) {
+                        sh '''
+                            set -e
+                            VM_IP=$(cat ip.txt)
+                            echo "[servers]" > inventory.ini
+                            echo "vm ansible_host=${VM_IP} ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/jenkins_deploy_rsa" >> inventory.ini
+
+                            ansible-playbook -i inventory.ini \
+                              --ssh-common-args='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null' \
+                              -e "telegram_token=${TELEGRAM_TOKEN}" \
+                              -e "github_token=${G_TOKEN}" \
+                              playbook.yml
+                        '''
+                    }
                 }
             }
         }
