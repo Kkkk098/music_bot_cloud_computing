@@ -59,18 +59,25 @@
         owner: ubuntu
         group: ubuntu
 
-    - name: Download model file from GitHub Releases (uses github_token if provided)
+    - name: Download model file from GitHub Releases (private repo with token)
       get_url:
         url: "{{ release_url }}"
         dest: "{{ model_dest }}"
         mode: '0644'
         owner: ubuntu
         group: ubuntu
-        timeout: 300
-        headers:
-          Authorization: "token {{ github_token }}"
+        timeout: 600
+        force_basic_auth: yes
+        headers: >
+          {% if github_token is defined and github_token|length > 0 %}
+          {"Authorization": "token {{ github_token }}"}
+          {% else %}
+          {}
+          {% endif %}
       register: download_result
-      failed_when: download_result is failed or (download_result.status is defined and download_result.status not in [200,201,204])
+      until: download_result is not failed
+      retries: 3
+      delay: 5
 
     - name: Stat model file
       stat:
