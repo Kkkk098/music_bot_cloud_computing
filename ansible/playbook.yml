@@ -1,21 +1,36 @@
-- name: Copy docker-compose.yml
-  copy:
-    src: "{{ local_project_root }}/docker-compose.yml"
-    dest: "{{ remote_app_dir }}/docker-compose.yml"
-    mode: "0644"
+- name: Deploy Music App with Docker Compose
+  hosts: all
+  become: yes
+  vars:
+    # playbook_dir — встроенная переменная Ansible: путь к директории, где лежит playbook
+    local_project_root: "{{ playbook_dir }}"
+    remote_app_dir: /opt/music-app
 
-- name: Create .env file with Telegram token
-  copy:
-    dest: "{{ remote_app_dir }}/.env"
-    content: "TELEGRAM_BOT_TOKEN={{ telegram_token }}\n"
-    mode: '0600'
+  tasks:
+    - name: Ensure remote app directory exists
+      file:
+        path: "{{ remote_app_dir }}"
+        state: directory
+        mode: '0755'
 
-- name: Pull latest images from Docker Hub
-  shell: docker-compose pull
-  args:
-    chdir: "{{ remote_app_dir }}"
+    - name: Copy docker-compose.yml
+      copy:
+        src: "{{ local_project_root }}/docker-compose.yml"
+        dest: "{{ remote_app_dir }}/docker-compose.yml"
+        mode: "0644"
 
-- name: Start containers
-  shell: docker-compose up -d
-  args:
-    chdir: "{{ remote_app_dir }}"
+    - name: Create .env file with Telegram token
+      copy:
+        dest: "{{ remote_app_dir }}/.env"
+        content: "TELEGRAM_BOT_TOKEN={{ telegram_token }}\n"
+        mode: '0600'
+
+    - name: Pull latest images from Docker Hub
+      community.docker.docker_compose:
+        project_src: "{{ remote_app_dir }}"
+        pull: true
+
+    - name: Start containers
+      community.docker.docker_compose:
+        project_src: "{{ remote_app_dir }}"
+        state: present
