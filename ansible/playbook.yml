@@ -7,8 +7,10 @@
     model_dest: /opt/music-app/best_model_heavy_m192_h256_gru256x2.pth
     release_url: "https://github.com/1vmc1/MT/releases/download/1.0/{{ model_filename }}"
     app_dir: /opt/music-app
-
+    download_retries: 3
+    download_delay: 5
   tasks:
+
     - name: Ensure remote app directory exists
       file:
         path: "{{ app_dir }}"
@@ -17,17 +19,17 @@
         owner: ubuntu
         group: ubuntu
 
-    - name: Remove any existing path at model location (file or directory)
+    - name: Remove any existing model path
       file:
         path: "{{ model_dest }}"
         state: absent
 
-    - name: Remove any existing path at labels.json (file or directory)
+    - name: Remove any existing labels.json
       file:
         path: "{{ app_dir }}/labels.json"
         state: absent
 
-    - name: Ensure parent directory exists (just in case)
+    - name: Ensure parent directory exists (redundant-safe)
       file:
         path: "{{ app_dir }}"
         state: directory
@@ -47,27 +49,25 @@
       copy:
         src: ../docker-compose.yml
         dest: "{{ app_dir }}/docker-compose.yml"
-        mode: '0644'
         owner: ubuntu
         group: ubuntu
+        mode: '0644'
 
     - name: Copy labels.json from repo root
       copy:
         src: ../labels.json
         dest: "{{ app_dir }}/labels.json"
-        mode: '0644'
         owner: ubuntu
         group: ubuntu
+        mode: '0644'
 
-    - name: Verify model URL is reachable (follow redirects)
+    - name: Verify model URL is reachable (HEAD)
       uri:
         url: "{{ release_url }}"
         method: HEAD
         return_content: no
         status_code: [200,301,302]
-        follow_redirects: all
       register: url_check
-      failed_when: url_check.status is defined and (url_check.status | int) not in [200,301,302]
       ignore_errors: yes
 
     - name: Fail with helpful message if URL check failed
@@ -88,11 +88,10 @@
         owner: ubuntu
         group: ubuntu
         timeout: 600
-        follow_redirects: all
       register: download_result
-      until: download_result is not failed
-      retries: 3
-      delay: 5
+      until: download_result is succeeded
+      retries: "{{ download_retries }}"
+      delay: "{{ download_delay }}"
 
     - name: Stat model file
       stat:
@@ -102,7 +101,7 @@
     - name: Fail if model file is empty or missing
       fail:
         msg: "Model file {{ model_dest }} is missing or zero-sized after download."
-      when: model_stat.stat.exists == false or model_stat.stat.size | default(0) == 0
+      when: model_stat.stat.exists == false or (model_stat.stat.size | default(0) == 0)
 
     - name: Show model file info (debug)
       command: ls -lh "{{ model_dest }}"
@@ -117,7 +116,7 @@
       copy:
         dest: "{{ app_dir }}/.env"
         content: |
-          TELEGRAM_TOKEN={{ telegram_token }}
+          TELEGRAM_TOKEN={{ telegram_token | default('') }}
         mode: '0600'
         owner: ubuntu
         group: ubuntu
