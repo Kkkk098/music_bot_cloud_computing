@@ -1,10 +1,8 @@
-- name: Deploy Music App with Docker Compose
+- name: Deploy Music App with Docker Compose (shell fallback)
   hosts: all
   become: yes
 
   vars:
-    # playbook_dir — директория, где лежит этот playbook (ansible/)
-    # ../ от playbook_dir -> корень репозитория, где лежит docker-compose.yml
     local_project_root: "{{ playbook_dir }}/.."
     remote_app_dir: /opt/music-app
 
@@ -27,7 +25,7 @@
         content: "TELEGRAM_BOT_TOKEN={{ telegram_token }}\n"
         mode: '0600'
 
-  - name: Pull latest images
+    - name: Pull latest images
       shell: docker-compose pull
       args:
         chdir: "{{ remote_app_dir }}"
