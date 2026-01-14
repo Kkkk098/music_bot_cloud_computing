@@ -9,6 +9,20 @@
     app_dir: /opt/music-app
 
   tasks:
+    - name: Ensure python3-pip is installed
+      apt:
+        name: python3-pip
+        state: present
+        update_cache: yes
+
+    - name: Upgrade pyOpenSSL and cryptography to fix Ansible SSL bug
+      pip:
+        name:
+          - pyOpenSSL
+          - cryptography
+        state: latest
+        executable: pip3
+
     - name: Update APT cache
       apt:
         update_cache: yes
@@ -22,24 +36,8 @@
           - curl
           - gnupg
           - lsb-release
-          - python3-pip
           - software-properties-common
         state: present
-
-    - name: Ensure pip is up-to-date
-      pip:
-        name: pip
-        state: latest
-        executable: pip3
-
-    - name: Upgrade pyOpenSSL and cryptography (fixes get_url pyOpenSSL bug)
-      pip:
-        name:
-          - pyOpenSSL
-          - cryptography
-          - urllib3[secure]
-        state: latest
-        executable: pip3
 
     - name: Add Docker GPG key
       apt_key:
