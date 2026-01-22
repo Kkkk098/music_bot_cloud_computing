@@ -1,0 +1,41 @@
+pipeline {
+    agent { label 'kkk1' }
+
+    environment {
+        DOCKER_HUB_CREDS = credentials('docker-hub-cred') // credentialsId в Jenkins
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                git url: 'https://github.com/Kkkk098/music_bot_cloud_computing', branch: 'main'
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                sh '''
+                    docker build -t myapp:latest .
+                '''
+            }
+        }
+
+        stage('Archive Docker Image') {
+            steps {
+                sh '''
+                    docker save myapp:latest -o myapp.tar
+                '''
+                archiveArtifacts artifacts: 'myapp.tar', fingerprint: true
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Лаба 2 успешно собрана!'
+        }
+        failure {
+            echo 'Сборка Лабы 2 не удалась, проверьте логи.'
+        }
+    }
+}
