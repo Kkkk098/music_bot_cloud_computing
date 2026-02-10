@@ -1,38 +1,43 @@
 pipeline {
-    agent { label 'kkk1' }
+    agent { label 'kkk1' } // Весь пайплайн выполняется на Node, где Git и Docker доступны
 
     environment {
-        DOCKER_HUB_CREDS = credentials('docker-hub-cred') // credentialsId в Jenkins
+        DOCKER_HUB_CREDS = credentials('docker-hub-cred') // Jenkins credential для Docker Hub
     }
 
     stages {
         stage('Checkout') {
             steps {
-                git url: 'https://github.com/Kkkk098/music_bot_cloud_computing', branch: 'main'
+                // Checkout выполняется на Node, Master не участвует
+                checkout([$class: 'GitSCM',
+                    branches: [[name: '*/main']],
+                    userRemoteConfigs: [[url: 'https://github.com/Kkkk098/music_bot_cloud_computing']]]
+                )
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                sh '''
-                    docker build -t myapp:latest .
-                '''
+                sh 'docker build -t myapp:latest .'
             }
         }
 
-        stage('Archive Docker Image') {
+        stage('Push Docker Image') {
             steps {
-                sh '''
-                    docker save myapp:latest -o myapp.tar
-                '''
-                archiveArtifacts artifacts: 'myapp.tar', fingerprint: true
+                withCredentials([usernamePassword(credentialsId: 'docker-hub-cred', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    sh '''
+                        echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+                        docker tag myapp:latest $DOCKER_USER/myapp:latest
+                        docker push $DOCKER_USER/myapp:latest
+                    '''
+                }
             }
         }
     }
 
     post {
         success {
-            echo 'Лаба 2 успешно собрана!'
+            echo 'Лаба 2 успешно собрана и Docker образ загружен!'
         }
         failure {
             echo 'Сборка Лабы 2 не удалась, проверьте логи.'
