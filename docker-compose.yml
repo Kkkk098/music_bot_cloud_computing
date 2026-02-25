@@ -1,21 +1,23 @@
+version: "3.9"
+
 services:
-  music-model:
-    image: 1vmc1/music-app:model-v1
-    container_name: music-model
+  music-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: music-api
     ports:
       - "8000:8000"
-    volumes:
-      # файлы весов и labels ожидаются в /opt/music-app на хосте
-      - ./best_model_heavy_m192_h256_gru256x2.pth:/app/best_model_heavy_m192_h256_gru256x2.pth
-      - ./labels.json:/app/labels.json
     restart: always
 
   music-bot:
-    image: 1vmc1/music-app:bot-v1
-    container_name: mt-music-bot-1
+    build:
+      context: .
+      dockerfile: Dockerfile.bot
+    container_name: music-bot
     depends_on:
-      - music-model
+      - music-api
     environment:
-      - TELEGRAM_TOKEN=8137581059:AAFOSgGg1RE-Kq0coZceSYncj_L89DMdYK0
-      - API_URL=http://music-model:8000/predict_segmented
+      TELEGRAM_TOKEN: ${TELEGRAM_TOKEN}
+      API_URL: http://music-api:8000/predict_segmented
     restart: always
