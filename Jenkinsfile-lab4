@@ -1,0 +1,82 @@
+pipeline {
+    agent { label 'kkk1' }
+
+    environment {
+        DOCKER_REPO = "kkkk098/music-app"
+        SERVER_IP = "192.168.199.216"
+    }
+
+    stages {
+
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Build Docker Images') {
+            steps {
+                sh '''
+                    docker build -t $DOCKER_REPO:api-latest -f Dockerfile.api .
+                    docker build -t $DOCKER_REPO:bot-latest -f Dockerfile.bot .
+                '''
+            }
+        }
+
+        stage('Push to Docker Hub') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'docker-hub-kkk',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    sh '''
+                        echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+                        docker push $DOCKER_REPO:api-latest
+                        docker push $DOCKER_REPO:bot-latest
+                    '''
+                }
+            }
+        }
+
+        stage('Deploy to Server') {
+            steps {
+                withCredentials([
+                    sshUserPrivateKey(
+                        credentialsId: 'server-ssh-kkk',
+                        keyFileVariable: 'SSH_KEY'
+                    ),
+                    string(
+                        credentialsId: 'telegram-bot-token-kkk',
+                        variable: 'TG_TOKEN'
+                    )
+                ]) {
+                    sh '''
+                        ssh -o StrictHostKeyChecking=no -i $SSH_KEY ubuntu@$SERVER_IP "mkdir -p ~/app"
+
+                        scp -o StrictHostKeyChecking=no -i $SSH_KEY docker-compose.yml ubuntu@$SERVER_IP:~/app/
+
+                        echo "TELEGRAM_TOKEN=$TG_TOKEN" > .env
+                        scp -o StrictHostKeyChecking=no -i $SSH_KEY .env ubuntu@$SERVER_IP:~/app/.env
+
+                        ssh -o StrictHostKeyChecking=no -i $SSH_KEY ubuntu@$SERVER_IP "
+                            cd ~/app &&
+                            docker compose pull &&
+                            docker compose down &&
+                            docker compose up -d
+                        "
+                    '''
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'CI/CD успешно выполнен. Контейнеры развернуты.'
+        }
+        failure {
+            echo 'Ошибка пайплайна. Проверьте логи.'
+        }
+    }
+}
