@@ -14,7 +14,7 @@ services:
     command: >
       sh -c "
       if [ ! -f /models/model.pth ]; then
-        curl -L -o /models/model.pth https://github.com/Kkkk098/music_bot_cloud_computing/releases/download/v1.0/best_model_heavy_m192_h256_gru256x2.pth;
+        curl -L -o /models/model.pth https://github.com/Kkkk098/music_bot_cloud_computing/releases/download/model-v1/best_model_heavy_m192_h256_gru256x2.pth;
       fi &&
       uvicorn api:app --host 0.0.0.0 --port 8000
       "      
