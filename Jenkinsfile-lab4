@@ -61,9 +61,9 @@ pipeline {
 
                         ssh -o StrictHostKeyChecking=no -i $SSH_KEY ubuntu@$SERVER_IP "
                             cd ~/app &&
-                            docker compose pull &&
-                            docker compose down &&
-                            docker compose up -d
+                            docker-compose pull &&
+                            docker-compose down &&
+                            docker-compose up -d
                         "
                     '''
                 }
