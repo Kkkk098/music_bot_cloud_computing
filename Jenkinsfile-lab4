@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         DOCKER_REPO = "kkkk098/music-app"
-        SERVER_IP = "192.168.199.216"
+        SERVER_IP = "192.168.199.120"
     }
 
     stages {
