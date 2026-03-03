@@ -127,6 +127,7 @@ async def handle_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         logger.error(f"API {resp.status}: {err}")
                         await msg.reply_text("❌ Ошибка API.")
     except Exception as e:
+        print("DEBUG ERROR from bot.py:", e)
         logger.exception("Ошибка в обработчике", exc_info=e)
         await update.message.reply_text("❌ Ошибка при обработке файла.")
     finally:
