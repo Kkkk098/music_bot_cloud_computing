@@ -8,17 +8,10 @@ services:
       - "8000:8000"
     restart: always
     environment:
-      WEIGHTS_PATH: /models/model.pth
+      WEIGHTS_PATH: /app/best_model_heavy_m192_h256_gru256x2.pth
     volumes:
-      - model-data:/models
-    command: >
-      sh -c "
-      if [ ! -f /models/model.pth ]; then
-        curl -L -o /models/best_model_heavy_m192_h256_gru256x2.pth https://github.com/Kkkk098/music_bot_cloud_computing/releases/download/model-v1/best_model_heavy_m192_h256_gru256x2.pth;
-      fi &&
-      uvicorn api:app --host 0.0.0.0 --port 8000
-      "      
-
+      - ./best_model_heavy_m192_h256_gru256x2.pth:/app/best_model_heavy_m192_h256_gru256x2.pth
+   
   music-bot:
     image: kkkk098/music-app:bot-latest
     container_name: music-bot
@@ -28,6 +21,3 @@ services:
     environment:
       TELEGRAM_TOKEN: ${TELEGRAM_TOKEN}
       API_URL: http://music-api:8000/predict_segmented
-
-volumes:
-  model-data:
