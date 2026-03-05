@@ -1,0 +1,85 @@
+pipeline {
+    agent { label 'kkk1' }
+
+    environment {
+        DOCKERHUB_REPO = "kkkk098/music-app"
+    }
+
+    stages {
+
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Build Docker images') {
+            steps {
+                sh 'docker build -t $DOCKER_REPO:api-latest -f Dockerfile.api'
+                sh 'docker build -t $DOCKER_REPO:bot-latest -f Dockerfile.bot'
+            }
+        }
+
+        stage('Push Docker images') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'docker-hub-kkk',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    sh '''
+                    echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+                    docker push $DOCKERHUB_REPO:api-latest
+                    docker push $DOCKERHUB_REPO:bot-latest
+                    '''
+                }
+            }
+        }
+
+        stage('Terraform Init') {
+            steps {
+                dir('terraform_openstack') {
+                    sh 'terraform init'
+                }
+            }
+        }
+
+        stage('Terraform Apply') {
+            steps {
+                dir('terraform_openstack') {
+                    sh 'terraform apply -auto-approve'
+                }
+            }
+        }
+
+        stage('Get VM IP') {
+            steps {
+                script {
+                    VM_IP = sh(
+                        script: "cd terraform_openstack && terraform output -raw vm_ip",
+                        returnStdout: true
+                    ).trim()
+
+                    writeFile file: 'inventory.ini', text: """
+[server]
+${VM_IP} ansible_user=ubuntu
+"""
+                }
+            }
+        }
+
+        stage('Deploy with Ansible') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'telegram-token', variable: 'TELEGRAM_TOKEN')
+                ]) {
+
+                    sh '''
+                    ansible-playbook -i inventory.ini ansible/playbook.yml \
+                    --extra-vars "telegram_token=$TELEGRAM_TOKEN"
+                    '''
+                }
+            }
+        }
+    }
+}
