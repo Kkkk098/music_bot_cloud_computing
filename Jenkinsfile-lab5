@@ -101,11 +101,7 @@ ${VM_IP} ansible_user=ubuntu
                         ansible-playbook \
                           -i inventory.ini \
                           ansible/playbook.yml \
-                          --extra-vars "
-                          telegram_token=$TELEGRAM_TOKEN
-                          dockerhub_user=$DOCKER_USER
-                          dockerhub_password=$DOCKER_PASS
-                          "
+                          --extra-vars "telegram_token=$TELEGRAM_TOKEN dockerhub_user=$DOCKER_USER dockerhub_password=$DOCKER_PASS"
                         '''
                     }
                 }
