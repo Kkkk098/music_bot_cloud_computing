@@ -3,7 +3,6 @@ pipeline {
 
     environment {
         DOCKERHUB_REPO = "kkkk098/music-app"
-        OS_CLOUD = 'mycloud'
     }
 
     stages {
@@ -49,11 +48,18 @@ pipeline {
         stage('Terraform Apply') {
             steps {
                 dir('terraform_openstack') {
-                    withCredentials([string(credentialsId: 'openstack-password', variable: 'OS_PASSWORD')]) {
-                        sh '''
-                        export OS_PASSWORD=$OS_PASSWORD
-                        terraform apply -auto-approve
-                        '''
+                    withCredentials([string(credentialsId: 'openstack-password', variable: 'OPENSTACK_PASSWORD')]) {
+                        withEnv([
+                            "OS_USERNAME=master2025",
+                            "OS_PASSWORD=${OPENSTACK_PASSWORD}",
+                            "OS_PROJECT_NAME=students",
+                            "OS_USER_DOMAIN_NAME=Default",
+                            "OS_PROJECT_DOMAIN_NAME=Default",
+                            "OS_AUTH_URL=https://cloud.crplab.ru:5000",
+                            "OS_REGION_NAME=RegionOne"
+                        ]) {
+                            sh 'terraform apply -auto-approve'
+                        }
                     }
                 }
             }
