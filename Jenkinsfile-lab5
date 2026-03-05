@@ -2,7 +2,7 @@ pipeline {
     agent { label 'kkk1' }
 
     environment {
-        DOCKERHUB_REPO = "kkkk098/music-app-tf"
+        DOCKERHUB_REPO = "kkkk098/music-app"
     }
 
     stages {
