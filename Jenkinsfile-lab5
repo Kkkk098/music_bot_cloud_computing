@@ -3,7 +3,6 @@ pipeline {
 
     environment {
         DOCKERHUB_REPO = "kkkk098/music-app"
-        OS_CLOUD   = 'mycloud'
     }
 
     stages {
