@@ -9,6 +9,4 @@ terraform {
   }
 }
 
-provider "openstack" {
-  cloud = "mycloud"
-}
+provider "openstack" {}
