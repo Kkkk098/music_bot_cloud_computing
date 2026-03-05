@@ -48,7 +48,12 @@ pipeline {
         stage('Terraform Apply') {
             steps {
                 dir('terraform_openstack') {
-                    sh 'terraform apply -auto-approve'
+                    withCredentials([string(credentialsId: 'openstack-password', variable: 'OS_PASSWORD')]) {
+                        sh '''
+                        export OS_PASSWORD=$OS_PASSWORD
+                        terraform apply -auto-approve
+                        '''
+                    }
                 }
             }
         }
