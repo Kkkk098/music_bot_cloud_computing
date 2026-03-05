@@ -62,15 +62,16 @@
       password: "{{ dockerhub_password }}"
 
   - name: Pull docker images
-    command: docker compose pull
+    command: docker-compose pull
     args:
       chdir: "{{ app_dir }}"
 
   - name: Start containers
-    command: docker compose up -d
+    command: docker-compose up -d
     args:
       chdir: "{{ app_dir }}"
     environment:
       TELEGRAM_TOKEN: "{{ telegram_token }}"
+
 
 
