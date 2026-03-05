@@ -2,7 +2,7 @@ pipeline {
     agent { label 'kkk1' }
 
     environment {
-        DOCKERHUB_REPO = "kkkk098/music-app"
+        DOCKERHUB_REPO = "kkkk098/music-app-tf"
     }
 
     stages {
@@ -13,20 +13,21 @@ pipeline {
             }
         }
 
-        stage('Build Docker images') {
+        stage('Docker Build') {
             steps {
-                sh 'docker build -t $DOCKER_REPO:api-latest -f Dockerfile.api'
-                sh 'docker build -t $DOCKER_REPO:bot-latest -f Dockerfile.bot'
+                sh 'docker build -t $DOCKERHUB_REPO:api-latest -f Dockerfile.api .'
+                sh 'docker build -t $DOCKERHUB_REPO:bot-latest -f Dockerfile.bot .'
             }
         }
 
-        stage('Push Docker images') {
+        stage('Docker Push') {
             steps {
                 withCredentials([usernamePassword(
                     credentialsId: 'docker-hub-kkk',
                     usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
+
                     sh '''
                     echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
                     docker push $DOCKERHUB_REPO:api-latest
@@ -60,8 +61,10 @@ pipeline {
                         returnStdout: true
                     ).trim()
 
+                    echo "VM IP: ${VM_IP}"
+
                     writeFile file: 'inventory.ini', text: """
-[server]
+[music_vm]
 ${VM_IP} ansible_user=ubuntu
 """
                 }
@@ -70,16 +73,33 @@ ${VM_IP} ansible_user=ubuntu
 
         stage('Deploy with Ansible') {
             steps {
-                withCredentials([
-                    string(credentialsId: 'telegram-token', variable: 'TELEGRAM_TOKEN')
-                ]) {
 
-                    sh '''
-                    ansible-playbook -i inventory.ini ansible/playbook.yml \
-                    --extra-vars "telegram_token=$TELEGRAM_TOKEN"
-                    '''
+                sshagent(credentials: ['server-ssh-kkk']) {
+
+                    withCredentials([
+                        string(credentialsId: 'telegram-bot-token-kkk-tf-open', variable: 'TELEGRAM_TOKEN'),
+                        usernamePassword(
+                            credentialsId: 'docker-hub-kkk',
+                            usernameVariable: 'DOCKER_USER',
+                            passwordVariable: 'DOCKER_PASS'
+                        )
+                    ]) {
+
+                        sh '''
+                        ansible-playbook \
+                          -i inventory.ini \
+                          ansible/playbook.yml \
+                          --extra-vars "
+                          telegram_token=$TELEGRAM_TOKEN
+                          dockerhub_user=$DOCKER_USER
+                          dockerhub_password=$DOCKER_PASS
+                          "
+                        '''
+                    }
                 }
+
             }
         }
+
     }
 }
