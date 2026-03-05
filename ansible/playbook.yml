@@ -1,45 +1,76 @@
 ---
 - name: Deploy music bot
-  hosts: server
-  become: yes
+  hosts: music_vm
+  become: true
 
   vars:
-    app_dir: /opt/music-app
+    app_dir: /home/ubuntu/app
+    weights_url: https://github.com/Kkkk098/music_bot_cloud_computing/releases/download/model-v1/best_model_heavy_m192_h256_gru256x2.pth
+    weights_file: best_model_heavy_m192_h256_gru256x2.pth
 
   tasks:
 
-    - name: Install packages
-      apt:
-        name:
-          - docker.io
-          - docker-compose
-        state: present
-        update_cache: yes
+  - name: Update apt cache
+    apt:
+      update_cache: yes
 
-    - name: Enable docker
-      systemd:
-        name: docker
-        enabled: yes
-        state: started
+  - name: Install required packages
+    apt:
+      name:
+        - docker.io
+        - docker-compose
+        - python3-pip
+      state: present
 
-    - name: Create app directory
-      file:
-        path: "{{ app_dir }}"
-        state: directory
+  - name: Enable docker
+    systemd:
+      name: docker
+      enabled: yes
+      state: started
 
-    - name: Copy docker-compose
-      copy:
-        src: ../docker-compose.yml
-        dest: "{{ app_dir }}/docker-compose.yml"
+  - name: Add ubuntu user to docker group
+    user:
+      name: ubuntu
+      groups: docker
+      append: yes
 
-    - name: Create env file
-      copy:
-        dest: "{{ app_dir }}/.env"
-        content: |
-          TELEGRAM_TOKEN={{ telegram_token }}
+  - name: Create application directory
+    file:
+      path: "{{ app_dir }}"
+      state: directory
+      owner: ubuntu
+      group: ubuntu
+      mode: '0755'
 
-    - name: Run docker compose
-      community.docker.docker_compose:
-        project_src: "{{ app_dir }}"
-        state: present
+  - name: Download model weights
+    get_url:
+      url: "{{ weights_url }}"
+      dest: "{{ app_dir }}/{{ weights_file }}"
+      mode: '0644'
+
+  - name: Copy docker-compose.yml
+    copy:
+      src: ../docker-compose.yml
+      dest: "{{ app_dir }}/docker-compose.yml"
+      owner: ubuntu
+      group: ubuntu
+      mode: '0644'
+
+  - name: Docker login
+    docker_login:
+      username: "{{ dockerhub_user }}"
+      password: "{{ dockerhub_password }}"
+
+  - name: Pull docker images
+    command: docker compose pull
+    args:
+      chdir: "{{ app_dir }}"
+
+  - name: Start containers
+    command: docker compose up -d
+    args:
+      chdir: "{{ app_dir }}"
+    environment:
+      TELEGRAM_TOKEN: "{{ telegram_token }}"
+
 
