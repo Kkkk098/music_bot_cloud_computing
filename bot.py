@@ -204,7 +204,7 @@ def main():
             pass
 
     # app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
-    app = ApplicationBuilder().token(TOKEN).httpx_timeout(Timeout(60.0, read=120.0)).build()
+    app = ApplicationBuilder().token(TELEGRAM_TOKEN).httpx_timeout(Timeout(60.0, read=120.0)).build()
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", help_command))
