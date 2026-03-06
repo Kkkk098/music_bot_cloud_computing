@@ -5,6 +5,7 @@ python-multipart==0.0.20
 
 # Telegram bot
 python-telegram-bot>=21.0,<22
+httpx
 aiohttp==3.10.11
 
 # ML/Audio
